@@ -3,128 +3,151 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Трекер тренировок</title>
-
-<!-- PWA -->
-<link rel="manifest" href="manifest.json">
-<script>
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js');
-}
-</script>
-
+<title>Тренировочный трекер</title>
 <style>
-body { font-family: -apple-system, Inter, sans-serif; margin:0; background:#111; color:#eee; }
-.container { padding:16px; }
-select, input, button {
-  width:100%; padding:12px; margin:6px 0;
-  border:none; border-radius:10px; font-size:16px;
-}
-input, select { background:#222; color:#eee; }
-button { background:#4caf50; color:#fff; font-weight:600; }
-button:active { background:#3e9242; }
-
-.card { background:#1b1b1b; padding:14px; border-radius:12px; margin-top:12px; }
-table { width:100%; border-collapse:collapse; margin-top:16px; font-size:14px; }
-th, td { border:1px solid #333; padding:6px; text-align:center; }
-th { background:#222; }
-tr:nth-child(even) { background:#161616; }
+  body { font-family: Arial, sans-serif; margin: 0; padding: 0; background: #f5f5f5; }
+  header { background: #1E90FF; color: white; padding: 1rem; text-align: center; }
+  main { padding: 1rem; }
+  select, input, button { margin: 0.5rem 0; padding: 0.5rem; width: 100%; }
+  .exercise { background: white; padding: 1rem; margin: 0.5rem 0; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+  .exercise h3 { margin-top: 0; }
+  .sets { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+  .set, .weight-input { flex: 1 1 30%; background: #e0e0e0; padding: 0.5rem; border-radius: 5px; text-align: center; }
+  #history { margin-top: 1rem; }
+  .history-item { background: #fff; padding: 0.5rem; margin: 0.25rem 0; border-radius: 5px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); font-size: 0.9rem; }
 </style>
 </head>
 <body>
-<div class="container">
-<h2>🏋️ Прогресс тренировки</h2>
+<header>
+  <h1>Тренировочный трекер</h1>
+</header>
+<main>
+  <label for="daySelect">Выбери день:</label>
+  <select id="daySelect">
+    <option value="1">День 1 — Грудь + Бицепс</option>
+    <option value="2">День 2 — Спина + Трицепс</option>
+    <option value="3">День 3 — Ноги + Плечи</option>
+  </select>
 
-<div class="card">
-<label>День недели:</label>
-<select id="day">
-  <option value="1">Пон — Грудь/Бицепс</option>
-  <option value="2">Ср — Спина/Трицепс</option>
-  <option value="3">Пт — Ноги/Плечи</option>
-</select>
+  <div id="exercises"></div>
 
-<label>Упражнение:</label>
-<select id="exercise"></select>
+  <button onclick="saveWorkout()">Сохранить тренировку</button>
 
-<label>Вес (кг):</label>
-<input id="weight" type="number">
-
-<label>Повторы:</label>
-<input id="reps" type="number">
-
-<label>Макс повторов:</label>
-<input id="maxReps" type="number">
-
-<button onclick="add()">Добавить</button>
-</div>
-
-<h3>📅 История</h3>
-<table id="log">
-<tr><th>День</th><th>Упражнение</th><th>Вес</th><th>Повторы</th><th>Совет</th></tr>
-</table>
-</div>
+  <h3>История тренировок</h3>
+  <div id="history"></div>
+</main>
 
 <script>
-// упражнения по дням
-let plan = {
-  1:["Жим лёжа","Жим гантелей","Разводки","Кроссовер","Подъём штанги","Скотт","Молотки"],
-  2:["Тяга штанги","Подтягивания","Горизонтальная тяга","Вертикальная тяга","Узкий жим","Французский","Канат"],
-  3:["Присед","Жим ногами","Выпады","Румынская тяга","Разгибание ног","Жим над головой","Разведения"]
+const plan = {
+  1: [
+    { name: 'Жим лёжа', sets: 4, range: '6-8', weight: 0 },
+    { name: 'Жим гантелей на наклонной', sets: 4, range: '8-10', weight: 0 },
+    { name: 'Разводки на наклонной / кроссовер', sets: 3, range: '10-12', weight: 0 },
+    { name: 'Жим в тренажёре/Хаммер', sets: 3, range: '8-10', weight: 0 },
+    { name: 'Отжимания на брусьях', sets: 3, range: '8-12', weight: 0 },
+    { name: 'Подъём штанги стоя', sets: 4, range: '6-8', weight: 0 },
+    { name: 'Молитвенная/скott', sets: 3, range: '8-10', weight: 0 },
+    { name: 'Молотки', sets: 3, range: '10-12', weight: 0 },
+  ],
+  2: [
+    { name: 'Тяга штанги в наклоне', sets: 4, range: '6-8', weight: 0 },
+    { name: 'Подтягивания', sets: 4, range: '6-10', weight: 0 },
+    { name: 'Тяга вертикального блока', sets: 3, range: '8-10', weight: 0 },
+    { name: 'Тяга горизонтального блока', sets: 3, range: '8-12', weight: 0 },
+    { name: 'Гиперэкстензии', sets: 3, range: '12-15', weight: 0 },
+    { name: 'Жим узким хватом', sets: 4, range: '6-8', weight: 0 },
+    { name: 'Разгибание на канате', sets: 3, range: '10-12', weight: 0 },
+    { name: 'Французский жим', sets: 3, range: '8-10', weight: 0 },
+  ],
+  3: [
+    { name: 'Присед', sets: 4, range: '6-8', weight: 0 },
+    { name: 'Жим ногами', sets: 4, range: '8-10', weight: 0 },
+    { name: 'Выпады / болгарские приседания', sets: 3, range: '10', weight: 0 },
+    { name: 'Румынская тяга', sets: 3, range: '8-10', weight: 0 },
+    { name: 'Сгибание/разгибание ног', sets: 3, range: '12-15', weight: 0 },
+    { name: 'Жим над головой', sets: 4, range: '6-8', weight: 0 },
+    { name: 'Подъёмы гантелей в стороны', sets: 3, range: '10-12', weight: 0 },
+    { name: 'Тяга штанги к подбородку или канат', sets: 3, range: '8-10', weight: 0 },
+    { name: 'Задняя дельта (разводка в наклоне)', sets: 3, range: '12-15', weight: 0 },
+  ]
 };
 
-// стартовые веса
-let defaultWeights = {};
-Object.values(plan).flat().forEach(n=>defaultWeights[n]=defaultWeights[n]||20);
+function renderExercises(day) {
+  const container = document.getElementById('exercises');
+  container.innerHTML = '';
+  plan[day].forEach((ex, i) => {
+    const div = document.createElement('div');
+    div.className = 'exercise';
+    div.innerHTML = `<h3>${ex.name}</h3>`;
 
-// данные
-let data = JSON.parse(localStorage.getItem('log')||'[]');
+    // Ввод веса
+    const weightInput = document.createElement('input');
+    weightInput.type = 'number';
+    weightInput.min = 0;
+    weightInput.value = ex.weight;
+    weightInput.className = 'weight-input';
+    weightInput.placeholder = 'Вес (кг)';
+    weightInput.addEventListener('change', () => ex.weight = parseFloat(weightInput.value));
+    div.appendChild(weightInput);
 
-const daySel=document.getElementById('day');
-const exerciseSel=document.getElementById('exercise');
-const weight=document.getElementById('weight');
-const maxReps=document.getElementById('maxReps');
-const reps=document.getElementById('reps');
-
-function loadExercises(){
-  exerciseSel.innerHTML="";
-  plan[daySel.value].forEach(e=>exerciseSel.innerHTML+=`<option>${e}</option>`);
-  weight.value = defaultWeights[exerciseSel.value];
-  maxReps.value = 8;
-}
-exerciseSel.addEventListener('change',()=> weight.value = defaultWeights[exerciseSel.value]);
-daySel.addEventListener('change',loadExercises);
-loadExercises();
-
-function render(){
-  const table=document.getElementById('log');
-  table.innerHTML='<tr><th>День</th><th>Упражнение</th><th>Вес</th><th>Повторы</th><th>Совет</th></tr>';
-  data.slice().reverse().forEach(x=>{
-    table.innerHTML+=`<tr><td>${x.d}</td><td>${x.e}</td><td>${x.w}</td><td>${x.r}</td><td>${x.msg}</td></tr>`;
+    const setsDiv = document.createElement('div');
+    setsDiv.className = 'sets';
+    for (let s = 0; s < ex.sets; s++) {
+      const input = document.createElement('input');
+      input.type = 'number';
+      input.placeholder = `Подход ${s+1}`;
+      input.min = 0;
+      input.className = 'set';
+      setsDiv.appendChild(input);
+    }
+    div.appendChild(setsDiv);
+    container.appendChild(div);
   });
 }
 
-function add() {
-  const d = daySel.options[daySel.selectedIndex].textContent;
-  const e = exerciseSel.value;
-  const w = Number(weight.value);
-  const r = Number(reps.value);
-  const m = Number(maxReps.value);
+function saveWorkout() {
+  const day = document.getElementById('daySelect').value;
+  const exercises = document.querySelectorAll('.exercise');
+  const result = [];
 
-  let msg = "Оставить вес";
-  if (r >= m) {
-    const add = e.toLowerCase().includes("гант") ? 2 : 2.5;
-    msg = `+${add} кг в след. раз`;
-    defaultWeights[e] = w + add;
-  } else {
-    defaultWeights[e] = w;
-  }
+  exercises.forEach((exDiv, i) => {
+    const sets = Array.from(exDiv.querySelectorAll('input.set')).map(inp => parseInt(inp.value) || 0);
+    const weight = parseFloat(exDiv.querySelector('input.weight-input').value) || 0;
+    plan[day][i].weight = weight;
+    result.push({ exercise: plan[day][i].name, sets, weight });
 
-  data.push({d,e,w,r,msg});
-  localStorage.setItem('log',JSON.stringify(data));
-  render();
+    const upper = parseInt(plan[day][i].range.split('-')[1] || plan[day][i].range);
+    if (sets.every(val => val >= upper)) {
+      plan[day][i].weight += 2.5;
+    }
+  });
+
+  const timestamp = new Date().toLocaleString();
+  const history = JSON.parse(localStorage.getItem('history') || '[]');
+  history.push({ timestamp, day, exercises: result });
+  localStorage.setItem('history', JSON.stringify(history));
+
+  alert('Тренировка сохранена и прогресс обновлён!');
+  renderExercises(day);
+  renderHistory();
 }
 
-render();
+function renderHistory() {
+  const historyDiv = document.getElementById('history');
+  const history = JSON.parse(localStorage.getItem('history') || '[]');
+  historyDiv.innerHTML = '';
+  history.slice(-10).reverse().forEach(item => {
+    const div = document.createElement('div');
+    div.className = 'history-item';
+    div.innerHTML = `<strong>${item.timestamp}</strong> — День ${item.day}<br>` +
+      item.exercises.map(ex => `${ex.exercise}: ${ex.sets.join(', ')} (Вес: ${ex.weight} кг)`).join('<br>');
+    historyDiv.appendChild(div);
+  });
+}
+
+document.getElementById('daySelect').addEventListener('change', (e) => renderExercises(e.target.value));
+renderExercises(1);
+renderHistory();
 </script>
 </body>
 </html>
